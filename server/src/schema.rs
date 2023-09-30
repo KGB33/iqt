@@ -1,7 +1,3 @@
-use std::fs;
-use std::path::PathBuf;
-use std::process::Command;
-
 use async_graphql::dynamic::Field;
 use async_graphql::dynamic::FieldFuture;
 use async_graphql::dynamic::Object;
@@ -11,15 +7,18 @@ use async_graphql::dynamic::TypeRef;
 use async_graphql::Value;
 
 pub fn schema() -> Result<Schema, SchemaError> {
-    let mut query = Object::new("Query");
-    let plugins = plugins();
+    let mut query = Object::new("Qurey").field(Field::new(
+        "hostname",
+        TypeRef::named(TypeRef::STRING),
+        |_| FieldFuture::new(async { Ok(Some(Value::from("example.com"))) }),
+    ));
+    let plugins: Vec<&str> = vec!["foo", "bar"];
     let mut fields: Vec<Field> = vec![];
-    for plug in plugins {
-        let path: String = plug.path.file_name().unwrap().to_str().unwrap().to_string();
+    for plugin in plugins {
         fields.push(Field::new(
-            path.clone(),
+            plugin,
             TypeRef::named(TypeRef::STRING),
-            FieldFuture::new(run_plugin(plug))
+            move |_| FieldFuture::new(async move { Ok(Some(Value::from(plugin))) }),
         ));
     }
     for f in fields {
@@ -28,25 +27,4 @@ pub fn schema() -> Result<Schema, SchemaError> {
     Schema::build(query.type_name(), None, None)
         .register(query)
         .finish()
-}
-
-#[derive(Clone)]
-struct Plugin {
-    path: PathBuf,
-}
-
-async fn run_plugin(plug: Plugin) -> Result<Option<Value>, async_graphql::Error> {
-        match Command::new("echo").arg("Hello world").output() {
-            Ok(s) => Ok(Some(Value::String(String::from_utf8(s.stdout).unwrap()))),
-            Err(e) => Err(async_graphql::Error::new_with_source(e)),
-        }
-}
-
-fn plugins() -> Vec<Plugin> {
-    fs::read_dir("../plugins/")
-        .unwrap()
-        .map(|p| Plugin {
-            path: p.unwrap().path(),
-        })
-        .collect::<Vec<Plugin>>()
 }
