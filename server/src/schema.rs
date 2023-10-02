@@ -1,30 +1,44 @@
-use async_graphql::dynamic::Field;
-use async_graphql::dynamic::FieldFuture;
-use async_graphql::dynamic::Object;
-use async_graphql::dynamic::Schema;
-use async_graphql::dynamic::SchemaError;
-use async_graphql::dynamic::TypeRef;
-use async_graphql::Value;
+use async_graphql::{EmptyMutation, EmptySubscription, Enum, Object, Schema};
+use tokio::process::Command;
 
-pub fn schema() -> Result<Schema, SchemaError> {
-    let mut query = Object::new("Qurey").field(Field::new(
-        "hostname",
-        TypeRef::named(TypeRef::STRING),
-        |_| FieldFuture::new(async { Ok(Some(Value::from("example.com"))) }),
-    ));
-    let plugins: Vec<&str> = vec!["foo", "bar"];
-    let mut fields: Vec<Field> = vec![];
-    for plugin in plugins {
-        fields.push(Field::new(
-            plugin,
-            TypeRef::named(TypeRef::STRING),
-            move |_| FieldFuture::new(async move { Ok(Some(Value::from(plugin))) }),
-        ));
+pub fn generate_schema() -> Schema<Query, EmptyMutation, EmptySubscription> {
+    Schema::build(Query, EmptyMutation, EmptySubscription).finish()
+}
+
+#[derive(Debug)]
+pub struct Query;
+
+#[Object]
+impl Query {
+    async fn hostname(&self) -> Hostname {
+        Hostname
     }
-    for f in fields {
-        query = query.field(f);
+}
+
+pub struct Hostname;
+
+#[Object]
+impl Hostname {
+    async fn name(&self, #[graphql(default)] flag: HostnameFlag) -> String {
+        let mut cmd = Command::new("hostname");
+        match flag {
+            HostnameFlag::Short => cmd.arg("--short"),
+            HostnameFlag::Long => cmd.arg("--long"),
+        };
+        let output = match cmd.output().await {
+            Ok(o) => o,
+            Err(e) => return e.to_string(),
+        };
+        match std::str::from_utf8(&output.stdout) {
+            Ok(s) => s.trim().to_string(),
+            Err(e) => e.to_string(),
+        }
     }
-    Schema::build(query.type_name(), None, None)
-        .register(query)
-        .finish()
+}
+
+#[derive(Enum, Copy, Clone, Eq, PartialEq, Default)]
+enum HostnameFlag {
+    Short,
+    #[default]
+    Long,
 }

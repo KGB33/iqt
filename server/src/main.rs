@@ -5,7 +5,7 @@ use async_graphql_poem::*;
 use poem::{listener::TcpListener, web::Html, *};
 
 mod schema;
-use schema::schema;
+use schema::generate_schema;
 
 #[handler]
 async fn graphiql() -> impl IntoResponse {
@@ -14,7 +14,7 @@ async fn graphiql() -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let schema = schema().unwrap();
+    let schema = generate_schema();
 
     let app = Route::new().at("/", get(graphiql).post(GraphQL::new(schema)));
     println!("GraphiQL: http://localhost:8000");
