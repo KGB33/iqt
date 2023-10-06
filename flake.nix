@@ -23,7 +23,7 @@
         with pkgs;
         {
           devShells.default = mkShell {
-            buildInputs = [ rustToolchain ];
+            buildInputs = [ rustToolchain pkg-config openssl];
           };
         }
       );
