@@ -18,9 +18,10 @@ struct Cli {
     inventory: Option<String>,
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    println!(
+    eprintln!(
         "subnets: {:?} - inventory_file: {:?} - query: {:?}",
         cli.subnets.as_deref(),
         cli.inventory.as_deref(),
@@ -32,7 +33,15 @@ fn main() -> anyhow::Result<()> {
         None => None,
     };
     let ips = generate_ips(cli.subnets.unwrap_or(vec![]), inventory_contents)?;
-    println!("{:?}", ips);
+    let client = reqwest::Client::new();
+    for ip in ips {
+        let res = client
+            .post(format!("http://{}:8000/graphql", ip.to_string()))
+            .body(format!(r#"{{ "query": "{}" }}"#, cli.query.clone()))
+            .send()
+            .await?;
+        println!("{}", res.text().await?)
+    }
     Ok(())
 }
 
