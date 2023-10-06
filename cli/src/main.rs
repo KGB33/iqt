@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
         Some(fp) => Some(fs::read_to_string(fp)?),
         None => None,
     };
-    let ips = generate_ips(cli.subnets.unwrap_or(vec![]), inventory_contents);
+    let ips = generate_ips(cli.subnets.unwrap_or(vec![]), inventory_contents)?;
     println!("{:?}", ips);
     Ok(())
 }
@@ -41,14 +41,12 @@ fn generate_ips(subnets: Vec<String>, inventory: Option<String>) -> anyhow::Resu
     // Generate ips from subnets.
     parse_subnets(&mut collector, subnets);
     // Generate from inventory file.
-    parse_subnets(
-        &mut collector,
-        inventory
-            .unwrap_or("".to_string())
-            .trim()
-            .split('\n')
-            .map(|s| s.to_string()), // This is ugly
-    );
+    if let Some(inv) = inventory {
+        parse_subnets(
+            &mut collector,
+            inv.trim().split('\n').map(|s| s.to_string()), // This is ugly
+        );
+    }
 
     collector.sort();
     collector.dedup();
