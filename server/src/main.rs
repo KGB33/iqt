@@ -1,7 +1,7 @@
 use std::error::Error;
 
 use async_graphql::http::GraphiQLSource;
-use async_graphql_poem::*;
+use async_graphql_poem::GraphQL;
 use poem::{listener::TcpListener, web::Html, *};
 
 mod schema;
@@ -14,9 +14,9 @@ async fn graphiql() -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    let schema = generate_schema();
-
-    let app = Route::new().at("/", get(graphiql).post(GraphQL::new(schema)));
+    let app = Route::new()
+        .at("/", get(graphiql).post(GraphQL::new(generate_schema())))
+        .at("/graphql", GraphQL::new(generate_schema()));
     println!("GraphiQL: http://localhost:8000");
     Server::new(TcpListener::bind("0.0.0.0:8000"))
         .run(app)
