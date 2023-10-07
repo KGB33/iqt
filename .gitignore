@@ -15,3 +15,7 @@ Cargo.lock
 
 # Direnv
 .direnv/
+
+# Python
+.venv
+*.pyc
