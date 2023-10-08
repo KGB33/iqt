@@ -29,6 +29,23 @@ $ iqt '{query}' -h 10.0.9.2 10.0.9.3
 
 ![](iqt_overview.png) 
 
+# CI/CD
+
+CI/CD is managed by Dagger. It builds release binaries for `cli` and `server`,
+then constructs a test environment for integration testing. 
+
+To run:
+
+For now, the `dagger-io` python package isn't in `nixpkgs`, so it needs to be installed 
+using pip.
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install dagger-io
+```
+Then, run the CI using `dagger run python ci/main.py` or `python ci/main.py`.
+
 # Resources
 
 https://fasterthanli.me/series/building-a-rust-service-with-nix/part-10#a-flake-with-a-dev-shell
