@@ -13,9 +13,13 @@ struct Cli {
     #[clap(short, long)]
     subnets: Option<Vec<String>>,
 
-    /// Specify one or more host IP addresses
+    /// Specify a file to read subnets from
     #[clap(short, long)]
     inventory: Option<String>,
+
+    /// Specify one or more hostnames
+    #[clap(short, long)]
+    fqdn: Option<Vec<String>>,
 }
 
 #[tokio::main]
@@ -33,16 +37,28 @@ async fn main() -> anyhow::Result<()> {
         None => None,
     };
     let ips = generate_ips(cli.subnets.unwrap_or(vec![]), inventory_contents)?;
+    let urls = generate_urls(ips, cli.fqdn);
     let client = reqwest::Client::new();
-    for ip in ips {
+    for url in urls {
         let res = client
-            .post(format!("http://{}:8000/graphql", ip.to_string()))
+            .post(url)
             .body(format!(r#"{{ "query": "{}" }}"#, cli.query.clone()))
             .send()
             .await?;
         println!("{}", res.text().await?)
     }
     Ok(())
+}
+
+fn generate_urls(ips: Vec<IpAddr>, hostnames: Option<Vec<String>>) -> Vec<String> {
+    let mut collector: Vec<String> = vec![];
+    for ip in ips {
+        collector.push(format!("http://{}:8000/graphql", ip.to_string()));
+    }
+    for host in hostnames.unwrap_or(vec![]) {
+        collector.push(format!("http://{}:8000/graphql", host));
+    }
+    return collector;
 }
 
 fn generate_ips(subnets: Vec<String>, inventory: Option<String>) -> anyhow::Result<Vec<IpAddr>> {
