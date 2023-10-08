@@ -1,80 +1,74 @@
-from dataclasses import dataclass
 import sys
 import asyncio
+from itertools import chain
 
 import dagger
 
-FLAKE_FLAG = [
-    "--extra-experimental-features",
-    "nix-command",
-    "--extra-experimental-features",
-    "flakes",
-]
-
 HOSTNAMES = ["foo", "foo.test", "bar.baz.test"]
-
-
-@dataclass
-class Flake:
-    nix: dagger.File
-    lock: dagger.File
-    rust_toolchain: dagger.File
 
 
 async def main():
     config = dagger.Config(log_output=sys.stdout)
 
     async with dagger.Connection(config) as client:
-        flake = Flake(
-            client.host().file("flake.nix"),
-            client.host().file("flake.lock"),
-            client.host().file("rust-toolchain.toml"),
+        # Build cli and server binaries
+        rust_toolchain = client.host().file("rust-toolchain.toml")
+        cli = build_rust_binary(
+            client, client.host().directory("cli"), rust_toolchain, "cli"
         )
-        bin = build_rust_binary(client, client.host().directory("."), flake)
-
-        remotes = [
-            build_test_machines(client, bin.file("/src/target/debug/server"), differ)
-            for differ in ("1", "2", "3")
-        ]
-
-        cli_con = (
-            client.container()
-            .from_("ubuntu:23.10")
-            .with_file("/bin/iqt", bin.file("/src/target/debug/cli"))
+        server = build_rust_binary(
+            client, client.host().directory("server"), rust_toolchain, "server"
         )
-        for hostname, remote in zip(HOSTNAMES, remotes):
-            cli_con = cli_con.with_service_binding(hostname, remote)
+
+        # Setup containers for integration tests
+        cli_con = client.container().from_("alpine").with_file("/bin/iqt", cli)
+        for hostname in HOSTNAMES:
+            cli_con = cli_con.with_service_binding(
+                hostname, build_test_machines(client, server)
+            )
 
         cli_con = cli_con.with_exec(
-            ["/bin/iqt", "'{hostname { name }}'", "-s", "'127.0.0.1'"]
+            [
+                "/bin/iqt",
+                "{hostname { name }}",
+                *list(chain.from_iterable(["-f", h] for h in HOSTNAMES)),
+            ]
         )
         out = await cli_con.stdout()
     print(out)
 
 
 def build_rust_binary(
-    client: dagger.Client, dir: dagger.Directory, flake: Flake
-) -> dagger.Container:
-    cmd_prexfix = ["nix", "develop", *FLAKE_FLAG, "--command"]
+    client: dagger.Client,
+    dir: dagger.Directory,
+    rust_toolchain: dagger.File,
+    name: str,
+    target: str = "x86_64-unknown-linux-gnu",
+) -> dagger.File:
     return (
         client.container()
-        .from_("nixos/nix")
+        .from_("rust")
         .with_directory("/src", dir)
-        .with_file("/src/flake.lock", flake.lock)
-        .with_file("/src/flake.nix", flake.nix)
-        .with_file("/src/rust-toolchain.toml", flake.rust_toolchain)
         .with_workdir("/src")
-        .with_exec([*cmd_prexfix, "cargo", "build", "--workspace"])
+        .with_file("rust-toolchain.toml", rust_toolchain)
+        .with_env_variable("RUSTFLAGS", "-C target-feature=+crt-static")
+        .with_exec(
+            [
+                "cargo",
+                "build",
+                "--release",
+                "--target",
+                target,
+            ]
+        )
+        .file(f"/src/target/{target}/release/{name}")
     )
 
 
-def build_test_machines(
-    client: dagger.Client, server: dagger.File, differ: str
-) -> dagger.Container:
+def build_test_machines(client: dagger.Client, server: dagger.File) -> dagger.Container:
     return (
         client.container()
-        .from_("ubuntu:23.10")
-        .with_env_variable("DIFFER", differ)
+        .from_("alpine")
         .with_file("/bin/iqt_server", server)
         .with_exposed_port(8000)
         .with_entrypoint(["iqt_server"])
