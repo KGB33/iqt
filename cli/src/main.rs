@@ -53,10 +53,10 @@ async fn main() -> anyhow::Result<()> {
 fn generate_urls(ips: Vec<IpAddr>, hostnames: Option<Vec<String>>) -> Vec<String> {
     let mut collector: Vec<String> = vec![];
     for ip in ips {
-        collector.push(format!("http://{}:8000/graphql", ip.to_string()));
+        collector.push(format!("http://{}:4807/graphql", ip.to_string()));
     }
     for host in hostnames.unwrap_or(vec![]) {
-        collector.push(format!("http://{}:8000/graphql", host));
+        collector.push(format!("http://{}:4807/graphql", host));
     }
     return collector;
 }

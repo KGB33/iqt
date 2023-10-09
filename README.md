@@ -9,7 +9,7 @@ collectively and aggregate the results.
 
 The first - and primary - component is a GraphQL API that runs on each device.
 It will be easily extendable with plugins - and a collection will be included
-in the project.
+in the project. The service runs on port `4807` by default.
 
 ![](agent_overview.png) 
 

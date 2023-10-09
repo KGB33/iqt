@@ -17,8 +17,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let app = Route::new()
         .at("/", get(graphiql).post(GraphQL::new(generate_schema())))
         .at("/graphql", GraphQL::new(generate_schema()));
-    println!("GraphiQL: http://localhost:8000");
-    Server::new(TcpListener::bind("0.0.0.0:8000"))
+    println!("GraphiQL: http://localhost:4807");
+    Server::new(TcpListener::bind("0.0.0.0:4807"))
         .run(app)
         .await?;
     Ok(())

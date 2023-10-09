@@ -70,7 +70,7 @@ def build_test_machines(client: dagger.Client, server: dagger.File) -> dagger.Co
         client.container()
         .from_("alpine")
         .with_file("/bin/iqt_server", server)
-        .with_exposed_port(8000)
+        .with_exposed_port(4807)
         .with_entrypoint(["iqt_server"])
     )
 
