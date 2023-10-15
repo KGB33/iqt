@@ -24,17 +24,22 @@ struct Cli {
     /// Specify one or more hostnames
     #[clap(short, long)]
     fqdn: Option<Vec<String>>,
+
+    #[clap(short, long, default_value_t = false)]
+    verbose: bool,
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
-    eprintln!(
-        "subnets: {:?} - inventory_file: {:?} - query: {:?}",
-        cli.subnets.as_deref(),
-        cli.inventory.as_deref(),
-        cli.query
-    );
+    if cli.verbose {
+        eprintln!(
+            "subnets: {:?} - inventory_file: {:?} - query: {:?}",
+            cli.subnets.as_deref(),
+            cli.inventory.as_deref(),
+            cli.query
+        );
+    }
 
     if !verify_query(cli.query.clone()) {
         return Err(anyhow!("Query Verification Failed!"));
