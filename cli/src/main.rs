@@ -1,5 +1,9 @@
 use std::{fs, net::IpAddr};
 
+use anyhow::anyhow;
+use miette::{Diagnostic, Report, SourceSpan};
+use thiserror::Error;
+
 use clap::Parser;
 use ipnetwork::IpNetwork;
 
@@ -32,6 +36,10 @@ async fn main() -> anyhow::Result<()> {
         cli.query
     );
 
+    if !verify_query(cli.query.clone()) {
+        return Err(anyhow!("Query Verification Failed!"));
+    }
+
     let inventory_contents = match cli.inventory {
         Some(fp) => Some(fs::read_to_string(fp)?),
         None => None,
@@ -53,12 +61,12 @@ async fn main() -> anyhow::Result<()> {
 fn generate_urls(ips: Vec<IpAddr>, hostnames: Option<Vec<String>>) -> Vec<String> {
     let mut collector: Vec<String> = vec![];
     for ip in ips {
-        collector.push(format!("http://{}:4807/graphql", ip.to_string()));
+        collector.push(format!("http://{}:4807/graphql", ip));
     }
-    for host in hostnames.unwrap_or(vec![]) {
+    for host in hostnames.unwrap_or_default() {
         collector.push(format!("http://{}:4807/graphql", host));
     }
-    return collector;
+    collector
 }
 
 fn generate_ips(subnets: Vec<String>, inventory: Option<String>) -> anyhow::Result<Vec<IpAddr>> {
@@ -92,6 +100,34 @@ where
         };
         collector.extend(net.iter())
     }
+}
+
+fn verify_query(query: String) -> bool {
+    let parser = apollo_parser::Parser::new(&query);
+    let ast = parser.parse();
+
+    #[derive(Error, Debug, Diagnostic)]
+    #[error("{}", self.ty)]
+    #[diagnostic(code("apollo-parser parsing error."))]
+    struct ApolloParserError {
+        ty: String,
+        #[source_code]
+        src: String,
+        #[label("{}", self.ty)]
+        span: SourceSpan,
+    }
+
+    let mut ok = true;
+    for err in ast.errors() {
+        let err = Report::new(ApolloParserError {
+            src: query.clone(),
+            span: (err.index(), err.data().len()).into(), // (offset, length of error token)
+            ty: err.message().into(),
+        });
+        eprintln!("{:?}", err);
+        ok = false;
+    }
+    ok
 }
 
 #[cfg(test)]
