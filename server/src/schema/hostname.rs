@@ -1,19 +1,5 @@
-use async_graphql::{EmptyMutation, EmptySubscription, Enum, Object, Schema};
+use async_graphql::{Object, Enum};
 use tokio::process::Command;
-
-pub fn generate_schema() -> Schema<Query, EmptyMutation, EmptySubscription> {
-    Schema::build(Query, EmptyMutation, EmptySubscription).finish()
-}
-
-#[derive(Debug)]
-pub struct Query;
-
-#[Object]
-impl Query {
-    async fn hostname(&self) -> Hostname {
-        Hostname
-    }
-}
 
 pub struct Hostname;
 

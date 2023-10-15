@@ -30,7 +30,7 @@ async def main():
         cli_con = cli_con.with_exec(
             [
                 "/bin/iqt",
-                "{hostname { name }}",
+                "{hostname { name } ip { address { show { ifname addrInfo {local}}}}}",
                 *list(chain.from_iterable(["-f", h] for h in HOSTNAMES)),
             ]
         )
