@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use async_graphql::{Object, SimpleObject};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use tokio::process::Command;
 
 pub struct Ip;
@@ -51,7 +51,7 @@ impl Route {
     }
 
     /// Describes the route to get to the provided Ip Address
-    async fn get(&self, ip_address: String) -> anyhow::Result<RouteInfo> {
+    async fn get(&self, ip_address: String) -> anyhow::Result<Vec<RouteInfo>> {
         let output = Command::new("ip")
             .arg("-j")
             .arg("route")
@@ -144,7 +144,42 @@ struct Link;
 
 #[Object]
 impl Link {
-    async fn show(&self, #[graphql(default)] link: String) -> String {
-        String::from(format!("TODO - {}", link))
+    async fn show(
+        &self,
+        #[graphql(default)] link: Option<String>,
+    ) -> anyhow::Result<Vec<LinkInfo>> {
+        let mut cmd = Command::new("ip");
+        cmd.arg("-j").arg("link").arg("show");
+        if let Some(link) = link {
+            cmd.arg(link);
+        }
+        let output = cmd.output().await?;
+        if !&output.status.success() {
+            return match std::str::from_utf8(&output.stderr) {
+                Ok(s) => Err(anyhow!("{}", s)),
+                Err(e) => Err(e.into()),
+            };
+        }
+        let output = std::str::from_utf8(&output.stdout)?;
+        match serde_json::from_str(&output) {
+            Ok(v) => Ok(v),
+            Err(e) => Err(e.into()),
+        }
     }
+}
+
+#[derive(SimpleObject, Deserialize)]
+struct LinkInfo {
+    ifindex: u32,
+    ifname: String,
+    flags: Vec<String>,
+    mtu: u32,
+    qdisc: String,
+    operstate: String,
+    linkmode: String,
+    group: String,
+    txqlen: Option<u16>,
+    link_type: String,
+    address: String,
+    broadcast: String,
 }
