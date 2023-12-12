@@ -2,6 +2,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    dagger = {
+      url = "github:dagger/nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
       inputs = {
@@ -10,7 +14,7 @@
       };
     };
   };
-  outputs = { self, nixpkgs, flake-utils, rust-overlay }:
+  outputs = { self, nixpkgs, flake-utils, rust-overlay, dagger, ...}:
     flake-utils.lib.eachDefaultSystem
       (system:
         let
@@ -20,14 +24,13 @@
           };
           rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
         in
-        with pkgs;
         {
-          devShells.default = mkShell {
-            buildInputs = [ 
+          devShells.default = pkgs.mkShell {
+            buildInputs = with pkgs; [ 
               rustToolchain
+              dagger.packages.${system}.dagger 
               pkg-config
               openssl
-              dagger
               python312
               black
             ];
