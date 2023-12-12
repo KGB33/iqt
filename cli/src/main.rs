@@ -1,4 +1,4 @@
-use std::{fs, net::IpAddr};
+use std::{fs, net::IpAddr, time::Duration};
 
 use anyhow::anyhow;
 use miette::{Diagnostic, Report, SourceSpan};
@@ -51,15 +51,26 @@ async fn main() -> anyhow::Result<()> {
     };
     let ips = generate_ips(cli.subnets.unwrap_or(vec![]), inventory_contents)?;
     let urls = generate_urls(ips, cli.fqdn);
-    let client = reqwest::Client::new();
+    let client = reqwest::ClientBuilder::new().timeout(Duration::from_secs(3)).build()?;
+    println!("[");
     for url in urls {
-        let res = client
+        let res = match client
             .post(url)
             .body(format!(r#"{{ "query": "{}" }}"#, cli.query.clone()))
             .send()
-            .await?;
-        println!("{}", res.text().await?)
+            .await
+        {
+            Ok(r) => r,
+            Err(e) => {
+                eprintln!("{}", e);
+                continue;
+            }
+        };
+        if let Ok(text) = res.text().await {
+            println!("{}", text);
+        }
     }
+    println!("]");
     Ok(())
 }
 
