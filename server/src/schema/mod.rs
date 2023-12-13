@@ -6,6 +6,9 @@ use hostname::Hostname;
 mod ip;
 use ip::Ip;
 
+mod docker;
+use docker::Docker;
+
 pub fn generate_schema() -> Schema<Query, EmptyMutation, EmptySubscription> {
     Schema::build(Query, EmptyMutation, EmptySubscription).finish()
 }
@@ -21,5 +24,9 @@ impl Query {
 
     async fn ip(&self) -> Ip {
         Ip
+    }
+
+    async fn docker(&self) -> Docker {
+        Docker
     }
 }
