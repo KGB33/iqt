@@ -52,8 +52,8 @@ async fn main() -> anyhow::Result<()> {
     let ips = generate_ips(cli.subnets.unwrap_or(vec![]), inventory_contents)?;
     let urls = generate_urls(ips, cli.fqdn);
     let client = reqwest::ClientBuilder::new().timeout(Duration::from_secs(3)).build()?;
-    println!("[");
-    for url in urls {
+    print!("[");
+    for (index, url) in urls.iter().enumerate() {
         let res = match client
             .post(url)
             .body(format!(r#"{{ "query": "{}" }}"#, cli.query.clone()))
@@ -67,10 +67,13 @@ async fn main() -> anyhow::Result<()> {
             }
         };
         if let Ok(text) = res.text().await {
-            println!("{}", text);
+            print!("{}", text);
+            if index != urls.len() - 1 {
+                print!(",");
+            }
         }
     }
-    println!("]");
+    println!("]"); // Remove last comma
     Ok(())
 }
 
