@@ -1,51 +1,65 @@
-# `iqt`
+# Infrastructure Query Tool (`iqt`)
 
-My Computer Science capstone project is a GraphQL server that allows system
-administrators to remotely query information about the servers. When deployed
-over multiple hosts, the second part will allow multiple host to be queried
-collectively and aggregate the results.
+A read-only GraphQL API to query system information including Docker, IP, and
+Hostname. The CLI allows users to query multiple systems and aggregate the
+results.
 
-# Major Components
+## Build
 
-The first - and primary - component is a GraphQL API that runs on each device.
-It will be easily extendable with plugins - and a collection will be included
-in the project. The service runs on port `4807` by default.
-
-![](agent_overview.png) 
-
-The second is a cli interface that allows users to query all the endpoints within
-their network and aggregate the data. 
+Download the latest release from
+[GitHub](https://github.com/KGB33/iqt/releases/). Or build from source using
+[Dagger](https://dagger.io/):
 
 ```bash
-# Query all hosts in inventory file.
-$ iqt '{query}' -i inventory
+# Build the Server
+dagger -m github.com/KGB33/daggerverse/rust \
+  -o iqt-server download \
+  build --src server/ --name server --toolchain rust-toolchain.toml
 
-# Query all host on the specified subnet.
-$ iqt '{quert}' -n 10.0.9.0/24 
-
-# Query specific hosts
-$ iqt '{query}' -h 10.0.9.2 10.0.9.3 
+# Build the cli
+dagger -m github.com/KGB33/daggerverse/rust \
+  -o iqt-cli download \
+  build --src cli/ --name cli --toolchain rust-toolchain.toml
 ```
 
-![](iqt_overview.png) 
+## Deploy
 
-# CI/CD
+You can run local (`./iqt-server`), or - for a production setup - use a
+Systemd unit file.
 
-CI/CD is managed by Dagger. It builds release binaries for `cli` and `server`,
-then constructs a test environment for integration testing. 
+```ini
+[Unit]
+Description=IQT Server
+After=network.target
 
-To run:
+[Service]
+ExecStart=/usr/bin/iqt-server
+Restart=always
+DynamicUser=yes
+SupplementaryGroups=docker
 
-For now, the `dagger-io` python package isn't in `nixpkgs`, so it needs to be installed 
-using pip.
-
-```bash
-python -m venv .venv
-. .venv/bin/activate
-pip install dagger-io
+[Install]
+WantedBy=default.target
 ```
-Then, run the CI using `dagger run python ci/main.py` or `python ci/main.py`.
+## Usage
 
-# Resources
+The interactive GraphQL query editor is available at
+`http://<SERVER_IP>:4807/`, use this to see documentation and play with 
+queries.
 
-https://fasterthanli.me/series/building-a-rust-service-with-nix/part-10#a-flake-with-a-dev-shell
+The CLI can be used to query multiple machines. The output is designed to be
+piped into `jq`. 
+
+```shell
+./iqt-cli '{hostname {name} docker { ps { names state }}}' \
+  -s 10.0.9.120 -f localhost \
+  | jq '.[] | {(.data.hostname.name): .data.docker.ps[].names}'
+{
+  "minecraft": "atm9_mc_1"
+}
+{
+  "localhost": "dagger-engine-3cb8ac0800e00d08"
+}
+```
+
+Lastly, other applications can access the API by sending queries to `http://<SERVER_IP>:4807/graphql`.
