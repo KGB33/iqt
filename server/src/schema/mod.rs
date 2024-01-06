@@ -9,6 +9,9 @@ use ip::Ip;
 mod docker;
 use docker::Docker;
 
+mod disk;
+use disk::Disk;
+
 pub fn generate_schema() -> Schema<Query, EmptyMutation, EmptySubscription> {
     Schema::build(Query, EmptyMutation, EmptySubscription).finish()
 }
@@ -28,5 +31,9 @@ impl Query {
 
     async fn docker(&self) -> Docker {
         Docker
+    }
+
+    async fn disk(&self) -> Disk {
+        Disk
     }
 }
