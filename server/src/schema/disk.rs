@@ -9,8 +9,13 @@ pub struct Disk;
 
 #[Object]
 impl Disk {
-    async fn usage(&self) -> anyhow::Result<Vec<DiskUsage>> {
-        let output = Command::new("df").arg("-h").output().await?;
+    async fn usage(&self, path: Option<String>) -> anyhow::Result<Vec<DiskUsage>> {
+        let mut cmd = Command::new("df");
+        cmd.arg("-h");
+        if let Some(path) = path {
+            cmd.arg(path);
+        }
+        let output = cmd.output().await?;
         if !&output.status.success() {
             return match std::str::from_utf8(&output.stderr) {
                 Ok(s) => Err(anyhow!("{}", s)),
