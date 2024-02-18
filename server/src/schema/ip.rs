@@ -44,7 +44,7 @@ impl Route {
             };
         }
         let output = std::str::from_utf8(&output.stdout)?;
-        match serde_json::from_str(&output) {
+        match serde_json::from_str(output) {
             Ok(v) => Ok(v),
             Err(e) => Err(e.into()),
         }
@@ -66,7 +66,7 @@ impl Route {
             };
         }
         let output = std::str::from_utf8(&output.stdout)?;
-        match serde_json::from_str(&output) {
+        match serde_json::from_str(output) {
             Ok(v) => Ok(v),
             Err(e) => Err(e.into()),
         }
@@ -104,7 +104,7 @@ impl Address {
             };
         }
         let output = std::str::from_utf8(&output.stdout)?;
-        match serde_json::from_str(&output) {
+        match serde_json::from_str(output) {
             Ok(v) => Ok(v),
             Err(e) => Err(e.into()),
         }
@@ -161,7 +161,7 @@ impl Link {
             };
         }
         let output = std::str::from_utf8(&output.stdout)?;
-        match serde_json::from_str(&output) {
+        match serde_json::from_str(output) {
             Ok(v) => Ok(v),
             Err(e) => Err(e.into()),
         }
